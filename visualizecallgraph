@@ -1,0 +1,55 @@
+import json
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Read the call_graph.json file
+try:
+    with open('call_graph.json', 'r') as file:
+        call_graph = json.load(file)
+except FileNotFoundError:
+    print("Error: call_graph.json not found in the current directory.")
+    exit(1)
+except json.JSONDecodeError:
+    print("Error: Invalid JSON format in call_graph.json.")
+    exit(1)
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Filter functions from ingestion.py
+functions = {
+    name: data for name, data in call_graph['functions'].items()
+    if data['file'] == 'ingestion.py'
+}
+
+# Add nodes with file attribute for coloring
+for func, data in functions.items():
+    G.add_node(func, file=data['file'])
+
+# Add edges based on call relationships (only within the subset)
+for func, data in functions.items():
+    for callee in data['calls']:
+        if callee in functions:
+            G.add_edge(func, callee)
+
+# Define colors based on file
+file_colors = {"ingestion.py": "lightblue"}
+node_colors = [file_colors.get(G.nodes[node]["file"], "lightgray") for node in G.nodes]
+
+# Create layout and draw the graph
+pos = nx.spring_layout(G, seed=42)  # Fixed seed for consistent layout
+plt.figure(figsize=(12, 8))
+nx.draw(
+    G,
+    pos,
+    with_labels=True,
+    node_color=node_colors,
+    node_size=2000,
+    font_size=10,
+    font_weight="bold",
+    arrows=True,
+    arrowstyle="->",
+    arrowsize=20
+)
+plt.title("Call Graph for Functions in ingestion.py")
+plt.show()
